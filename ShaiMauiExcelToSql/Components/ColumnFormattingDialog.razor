@@ -1,0 +1,172 @@
+@using ShaiMauiExcelToSql.Models
+@using System.Data
+
+<div class="modal fade @(IsVisible ? "show" : "")" style="display: @(IsVisible ? "block" : "none"); background-color: rgba(0,0,0,0.5);" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Column Formatting</h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="columnSelect" class="form-label">Select Column</label>
+                    <select class="form-select"
+                            id="columnSelect"
+                            @bind="selectedColumnName">
+                        @if (Columns == null || Columns.Count == 0)
+                        {
+                            <option value="" disabled>No columns available</option>
+                        } 
+                        else
+                        {
+                            @foreach (DataColumn column in Columns)
+                            {
+                                <option value="@column.ColumnName">@column.ColumnName</option>
+                            }
+
+                        }
+                    </select>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(selectedColumnName))
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Header Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="customHeaderText" class="form-label">Custom Header Text</label>
+                                <input type="text" class="form-control" id="customHeaderText" @bind="currentFormatting.CustomHeaderText" 
+                                       placeholder="Leave empty to use column name" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Formatting Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="customFormat" class="form-label">Custom Format</label>
+                                <input type="text" class="form-control" id="customFormat" @bind="currentFormatting.CustomFormat" 
+                                       placeholder="e.g., #,##0.00 for numbers, yyyy-MM-dd for dates" />
+                                <small class="form-text text-muted">
+                                    Examples: #,##0.00 (numbers), yyyy-MM-dd (dates), 0.0% (percentages)
+                                </small>
+                            </div>
+                            
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="boldText" @bind="currentFormatting.Bold">
+                                <label class="form-check-label" for="boldText">
+                                    Bold Text
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="italicText" @bind="currentFormatting.Italic">
+                                <label class="form-check-label" for="italicText">
+                                    Italic Text
+                                </label>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="fontColor" class="form-label">Font Color</label>
+                                <input type="color" class="form-control form-control-color" id="fontColor" @bind="currentFormatting.FontColor" />
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="backgroundColor" class="form-label">Background Color</label>
+                                <input type="color" class="form-control form-control-color" id="backgroundColor" @bind="currentFormatting.BackgroundColor" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Column Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="columnWidth" class="form-label">Column Width (0 for auto)</label>
+                                <input type="number" class="form-control" id="columnWidth" @bind="currentFormatting.Width" min="0" />
+                            </div>
+                            
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="hideColumn" @bind="currentFormatting.Hidden">
+                                <label class="form-check-label" for="hideColumn">
+                                    Hide Column
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" @onclick="SaveFormatting">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+    
+    [Parameter]
+    public EventCallback<bool> IsVisibleChanged { get; set; }
+    
+    [Parameter]
+    public DataColumnCollection Columns { get; set; } = null!;
+    
+    [Parameter]
+    public ExcelExportOptions ExportOptions { get; set; } = null!;
+    
+    [Parameter]
+    public EventCallback OnFormattingUpdated { get; set; }
+    
+    private string selectedColumnName = string.Empty;
+    private ColumnFormatting currentFormatting = new();
+    
+    protected override void OnParametersSet()
+    {
+        if (Columns != null && Columns.Count > 0 && string.IsNullOrEmpty(selectedColumnName))
+        {
+            selectedColumnName = Columns[0].ColumnName;
+            LoadColumnFormatting();
+        }
+    }
+    
+    private void ColumnSelected()
+    {
+        LoadColumnFormatting();
+    }
+    
+    private void LoadColumnFormatting()
+    {
+        if (string.IsNullOrEmpty(selectedColumnName) || ExportOptions == null)
+            return;
+            
+        currentFormatting = ExportOptions.GetColumnFormatting(selectedColumnName);
+    }
+    
+    private async Task SaveFormatting()
+    {
+        if (ExportOptions != null && !string.IsNullOrEmpty(selectedColumnName))
+        {
+            currentFormatting.ColumnName = selectedColumnName;
+            ExportOptions.SetColumnFormatting(currentFormatting);
+            
+            await OnFormattingUpdated.InvokeAsync();
+        }
+    }
+    
+    private async Task OnCancel()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+}

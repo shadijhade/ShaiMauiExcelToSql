@@ -1,0 +1,145 @@
+@page "/favorites"
+@using ShaiMauiExcelToSql.Models
+@using ShaiMauiExcelToSql.Services
+@inject QueryHistoryService HistoryService
+@inject NavigationManager NavigationManager
+
+<h3>Favorite Queries</h3>
+
+<div class="container">
+    @if (favoriteItems.Count == 0)
+    {
+        <div class="alert alert-info">
+            No favorite queries found. Add some from your query history.
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            @foreach (var item in favoriteItems)
+            {
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="text-truncate">
+                                @if (string.IsNullOrEmpty(item.Name))
+                                {
+                                    <span>Unnamed Query</span>
+                                }
+                                else
+                                {
+                                    <span>@item.Name</span>
+                                }
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFromFavorites(item)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <small class="text-muted">Last executed: @item.ExecutedAt.ToString("yyyy-MM-dd HH:mm:ss")</small>
+                            </div>
+                            <div class="mb-3">
+                                <h6>Query:</h6>
+                                <pre class="bg-light p-2" style="max-height: 100px; overflow-y: auto;">@item.SqlQuery</pre>
+                            </div>
+                            <div class="mb-3">
+                                <h6>Connection:</h6>
+                                <div class="text-truncate">
+                                    <small>@item.ConnectionString</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between align-items-center">
+                            <button class="btn btn-primary" @onclick="() => RunQuery(item)">Run Query</button>
+                            <button class="btn btn-outline-secondary" @onclick="() => EditName(item)">
+                                <i class="bi bi-pencil"></i> Rename
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (showEditDialog)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rename Favorite Query</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="queryName" class="form-label">Query Name</label>
+                        <input type="text" class="form-control" id="queryName" @bind="currentItem.Name" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveName">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<QueryHistoryItem> favoriteItems = new();
+    private bool showEditDialog = false;
+    private QueryHistoryItem currentItem = new();
+
+    protected override void OnInitialized()
+    {
+        LoadFavorites();
+    }
+
+    private void LoadFavorites()
+    {
+        favoriteItems = HistoryService.GetFavorites();
+    }
+
+    private void RunQuery(QueryHistoryItem item)
+    {
+        // Navigate to SQL query page with pre-filled values
+        NavigationManager.NavigateTo($"/sqlquery?connectionString={Uri.EscapeDataString(item.ConnectionString)}&query={Uri.EscapeDataString(item.SqlQuery)}");
+    }
+
+    private void RemoveFromFavorites(QueryHistoryItem item)
+    {
+        HistoryService.RemoveFromFavorites(item.Id);
+        LoadFavorites();
+    }
+
+    private void EditName(QueryHistoryItem item)
+    {
+        currentItem = new QueryHistoryItem
+        {
+            Id = item.Id,
+            Name = item.Name,
+            ConnectionString = item.ConnectionString,
+            SqlQuery = item.SqlQuery,
+            ExecutedAt = item.ExecutedAt,
+            Success = item.Success,
+            RowCount = item.RowCount,
+            ExecutionTime = item.ExecutionTime,
+            IsFavorite = true
+        };
+        showEditDialog = true;
+    }
+
+    private void SaveName()
+    {
+        HistoryService.UpdateFavorite(currentItem);
+        CloseDialog();
+        LoadFavorites();
+    }
+
+    private void CloseDialog()
+    {
+        showEditDialog = false;
+    }
+}

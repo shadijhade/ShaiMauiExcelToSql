@@ -1,0 +1,117 @@
+@page "/history"
+@using ShaiMauiExcelToSql.Models
+@using ShaiMauiExcelToSql.Services
+@inject QueryHistoryService HistoryService
+@inject NavigationManager NavigationManager
+
+<h3>Query History</h3>
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col">
+            <button class="btn btn-danger" @onclick="ClearHistory">Clear History</button>
+        </div>
+    </div>
+
+    @if (historyItems.Count == 0)
+    {
+        <div class="alert alert-info">
+            No query history found. Execute some queries to see them here.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>Query</th>
+                        <th>Rows</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in historyItems)
+                    {
+                        <tr>
+                            <td>@item.ExecutedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 300px;">@item.SqlQuery</div>
+                            </td>
+                            <td>@item.RowCount</td>
+                            <td>@item.ExecutionTime.TotalMilliseconds ms</td>
+                            <td>
+                                @if (item.Success)
+                                {
+                                    <span class="badge bg-success">Success</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Failed</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-primary" @onclick="() => RunQuery(item)">Run</button>
+                                    @if (!item.IsFavorite)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => AddToFavorites(item)">
+                                            <i class="bi bi-star"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-warning" @onclick="() => RemoveFromFavorites(item)">
+                                            <i class="bi bi-star-fill"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<QueryHistoryItem> historyItems = new();
+
+    protected override void OnInitialized()
+    {
+        LoadHistory();
+    }
+
+    private void LoadHistory()
+    {
+        historyItems = HistoryService.GetHistory();
+    }
+
+    private void ClearHistory()
+    {
+        HistoryService.ClearHistory();
+        LoadHistory();
+    }
+
+    private void RunQuery(QueryHistoryItem item)
+    {
+        // Navigate to SQL query page with pre-filled values
+        NavigationManager.NavigateTo($"/sqlquery?connectionString={Uri.EscapeDataString(item.ConnectionString)}&query={Uri.EscapeDataString(item.SqlQuery)}");
+    }
+
+    private void AddToFavorites(QueryHistoryItem item)
+    {
+        HistoryService.AddToFavorites(item);
+        LoadHistory();
+    }
+
+    private void RemoveFromFavorites(QueryHistoryItem item)
+    {
+        HistoryService.RemoveFromFavorites(item.Id);
+        LoadHistory();
+    }
+}
