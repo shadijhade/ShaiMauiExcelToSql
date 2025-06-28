@@ -1,9 +1,10 @@
 @using ShaiMauiExcelToSql.Models
 @using ShaiMauiExcelToSql.Services
 @using System.Data
+@using CommunityToolkit.Maui.Storage
 @inject ExcelExportSettingsService SettingsService
 @inject DatabaseService DatabaseService
-
+@inject IFolderPicker FolderPicker
 <div class="modal fade @(IsVisible ? "show" : "")" style="display: @(IsVisible ? "block" : "none"); background-color: rgba(0,0,0,0.5);" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -37,7 +38,7 @@
                                         </button>
                                     </div>
                                     <small class="form-text text-muted">
-                                        Leave empty to save in the default location
+                                        Leave empty to save in the default location. Click the folder icon to choose a folder.
                                     </small>
                                 </div>
                                 <div class="form-check mb-2">
@@ -277,34 +278,16 @@
     {
         try
         {
-            var customFileName = $"{options.FileNamePrefix}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
-            
-            var fileResult = await FilePicker.PickAsync(new PickOptions
+            var result = await FolderPicker.PickAsync(default);
+            if (result.IsSuccessful)
             {
-                PickerTitle = "Select Save Location",
-                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-                {
-                    { DevicePlatform.iOS, new[] { "public.item" } },
-                    { DevicePlatform.Android, new[] { "*/*" } },
-                    { DevicePlatform.WinUI, new[] { ".xlsx" } },
-                    { DevicePlatform.macOS, new[] { "xlsx" } }
-                })
-            });
-            
-            if (fileResult != null)
-            {
-                // Use the selected file path as the save location
-                var directory = Path.GetDirectoryName(fileResult.FullPath);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    options.CustomSavePath = Path.Combine(directory, customFileName);
-                }
+                options.CustomSavePath = result.Folder.Path;
+                await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception ex)
         {
-            // Handle exception
-            Console.WriteLine($"File picking failed: {ex.Message}");
+            Console.WriteLine($"Folder picking failed: {ex.Message}");
         }
     }
     

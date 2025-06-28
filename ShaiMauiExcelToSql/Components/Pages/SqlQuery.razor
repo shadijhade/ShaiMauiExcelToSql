@@ -3,6 +3,7 @@
 @using ShaiMauiExcelToSql.Models
 @using ShaiMauiExcelToSql.Services
 @using System.Data
+@using System.Linq
 @using Microsoft.AspNetCore.WebUtilities
 @using ShaiMauiExcelToSql.Components
 @inject DatabaseService DatabaseService
@@ -56,9 +57,112 @@
                             <p><strong>Execution Time:</strong> @queryResult.ExecutionTime.TotalMilliseconds ms</p>
                             <p><strong>Total Rows:</strong> @queryResult.TotalRows</p>
                             <p><strong>Total Columns:</strong> @queryResult.TotalColumns</p>
+                            @if (queryResult.HasMultipleResultSets)
+                            {
+                                <p><strong>Result Sets:</strong> @queryResult.ResultSetCount</p>
+                                <div class="alert alert-info mt-2">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Multiple Result Sets Detected!</strong> Your query returned @queryResult.ResultSetCount result sets.
+                                </div>
+                            }
                         </div>
 
-                        @if (queryResult.Data != null && queryResult.Data.Rows.Count > 0)
+                        @if (queryResult.HasMultipleResultSets)
+                        {
+                            <!-- Display summary for multiple result sets -->
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Result Sets Summary</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Result Set</th>
+                                                    <th>Rows</th>
+                                                    <th>Columns</th>
+                                                    <th>Preview</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (int i = 0; i < queryResult.ResultSets.Count; i++)
+                                                {
+                                                    var index = i; // Capture the loop variable
+                                                    var resultSet = queryResult.ResultSets[index];
+                                                    <tr>
+                                                        <td><strong>@(index + 1)</strong></td>
+                                                        <td>@resultSet.TotalRows</td>
+                                                        <td>@resultSet.TotalColumns</td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ToggleResultSetPreview(index))">
+                                                                @(selectedResultSetIndex == index ? "Hide" : "Show") Preview
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            @if (selectedResultSetIndex >= 0 && selectedResultSetIndex < queryResult.ResultSets.Count)
+                            {
+                                var selectedResultSet = queryResult.ResultSets[selectedResultSetIndex];
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Result Set @(selectedResultSetIndex + 1) Preview (showing first 5 rows)</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        @foreach (DataColumn column in selectedResultSet.Data.Columns)
+                                                        {
+                                                            <th>@column.ColumnName</th>
+                                                        }
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @{
+                                                        var rowsToShow = Math.Min(5, selectedResultSet.Data.Rows.Count);
+                                                        for (int i = 0; i < rowsToShow; i++)
+                                                        {
+                                                            <tr>
+                                                                @foreach (var item in selectedResultSet.Data.Rows[i].ItemArray)
+                                                                {
+                                                                    <td>@(item?.ToString() ?? "NULL")</td>
+                                                                }
+                                                            </tr>
+                                                        }
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-success" @onclick="ShowMultiResultSetExportDialog" disabled="@isExporting">
+                                    @if (isExporting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span> Exporting...</span>
+                                    }
+                                    else
+                                    {
+                                        <span><i class="bi bi-file-earmark-excel"></i> Export All Result Sets to Excel</span>
+                                    }
+                                </button>
+                                <button class="btn btn-warning" @onclick="AddToFavorites">
+                                    <i class="bi bi-star-fill"></i> Add to Favorites
+                                </button>
+                            </div>
+                        }
+                        else if (queryResult.Data != null && queryResult.Data.Rows.Count > 0)
                         {
                             <div class="table-responsive">
                                 <table class="table table-striped table-bordered">
@@ -129,7 +233,9 @@
     private bool isExecuting = false;
     private bool isExporting = false;
     private bool showExportDialog = false;
+    private bool showMultiResultSetExportDialog = false;
     private int exportProgress = 0;
+    private int selectedResultSetIndex = -1;
 
     protected override void OnInitialized()
     {
@@ -152,6 +258,8 @@
         try
         {
             isExecuting = true;
+            // Reset the selected result set index when executing a new query
+            selectedResultSetIndex = -1;
             queryResult = await DatabaseService.ExecuteQueryAsync(connection);
             
             // Add to history if query was executed
@@ -191,6 +299,43 @@
             return;
             
         showExportDialog = true;
+    }
+    
+    private void ShowMultiResultSetExportDialog()
+    {
+        if (queryResult?.ResultSets == null || !queryResult.Success || queryResult.ResultSets.Count == 0)
+            return;
+            
+        showMultiResultSetExportDialog = true;
+    }
+    
+    private void ToggleResultSetPreview(int index)
+    {
+        // Debug logging
+        System.Diagnostics.Debug.WriteLine($"ToggleResultSetPreview called with index: {index}, current selectedResultSetIndex: {selectedResultSetIndex}");
+        
+        // Validate the index
+        if (queryResult?.ResultSets == null || index < 0 || index >= queryResult.ResultSets.Count)
+        {
+            System.Diagnostics.Debug.WriteLine($"Invalid index {index}, result sets count: {queryResult?.ResultSets?.Count ?? 0}");
+            return;
+        }
+        
+        if (selectedResultSetIndex == index)
+        {
+            // Hide the preview if it's already showing
+            selectedResultSetIndex = -1;
+            System.Diagnostics.Debug.WriteLine($"Hiding preview, selectedResultSetIndex set to: {selectedResultSetIndex}");
+        }
+        else
+        {
+            // Show the preview for the selected result set
+            selectedResultSetIndex = index;
+            System.Diagnostics.Debug.WriteLine($"Showing preview for result set {index}, selectedResultSetIndex set to: {selectedResultSetIndex}");
+        }
+        
+        // Force UI update
+        StateHasChanged();
     }
 
     private async Task HandleExportWithOptions(ExcelExportOptions options)
@@ -275,6 +420,88 @@
         }
     }
     
+    private async Task HandleMultiResultSetExportWithOptions(ExcelExportOptions options)
+    {
+        if (queryResult?.ResultSets == null || !queryResult.Success || queryResult.ResultSets.Count == 0)
+            return;
+
+        try
+        {
+            isExporting = true;
+            exportProgress = 0;
+            
+            // Create a progress handler
+            var progressHandler = new Progress<int>(value => 
+            {
+                exportProgress = value;
+                StateHasChanged();
+            });
+            
+            // Start with initial progress
+            (progressHandler as IProgress<int>).Report(5);
+            
+            // Use a timer to simulate progress for small exports that finish quickly
+            var timer = new System.Timers.Timer(300);
+            timer.Elapsed += (sender, e) => 
+            {
+                if (isExporting && exportProgress < 90)
+                {
+                    exportProgress += 5;
+                    InvokeAsync(StateHasChanged);
+                }
+            };
+            timer.Start();
+            
+            var filePath = await DatabaseService.ExportMultipleResultSetsToExcelAsync(queryResult.ResultSets, options, progressHandler);
+            
+            // Stop the timer
+            timer.Stop();
+            timer.Dispose();
+            
+            // Set to 100% when complete
+            exportProgress = 100;
+            await InvokeAsync(StateHasChanged);
+            
+            // Small delay to show 100% completion
+            await Task.Delay(500);
+            
+            // Show success message or open the file
+            await Application.Current!.MainPage!.DisplayAlert(
+                "Export Successful", 
+                $"File with {queryResult.ResultSets.Count} worksheets saved to: {filePath}", 
+                "OK");
+                
+            // If option is set to open after export, try to open the file
+            if (options.OpenAfterExport)
+            {
+                try
+                {
+                    await Launcher.OpenAsync(new OpenFileRequest
+                    {
+                        File = new ReadOnlyFile(filePath)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error opening exported file");
+                    // Silently fail if we can't open the file
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error exporting multiple result sets to Excel");
+            await Application.Current!.MainPage!.DisplayAlert(
+                "Export Failed", 
+                $"Failed to export multiple result sets: {ex.Message}", 
+                "OK");
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+    
     private void AddToFavorites()
     {
         if (queryResult != null && queryResult.Success)
@@ -299,6 +526,20 @@
                 "OK");
         }
     }
+    
+    private string GetExportStatusMessage()
+    {
+        if (queryResult == null) return "Exporting...";
+        
+        if (queryResult.HasMultipleResultSets)
+        {
+            return $"Exporting {queryResult.ResultSetCount} result sets ({queryResult.TotalRows:N0} total rows) to Excel...";
+        }
+        else
+        {
+            return $"Exporting {queryResult.TotalRows:N0} rows to Excel...";
+        }
+    }
 }
 
 <ExcelExportDialog 
@@ -306,8 +547,14 @@
     IsVisibleChanged="@((value) => showExportDialog = value)" 
     OnExport="@HandleExportWithOptions"
     DataTable="@(queryResult?.Data ?? null)" />
+
+<MultiResultSetExportDialog 
+    IsVisible="@showMultiResultSetExportDialog" 
+    IsVisibleChanged="@((value) => showMultiResultSetExportDialog = value)" 
+    OnExport="@HandleMultiResultSetExportWithOptions"
+    ResultSets="@(queryResult?.ResultSets ?? new List<ResultSet>())" />
     
 <ExportProgressBar 
     IsVisible="@isExporting" 
     Progress="@exportProgress" 
-    StatusMessage="@($"Exporting {(queryResult?.TotalRows ?? 0):N0} rows to Excel...")" />
+    StatusMessage="@GetExportStatusMessage()" />

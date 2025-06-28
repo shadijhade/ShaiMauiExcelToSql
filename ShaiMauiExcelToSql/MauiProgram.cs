@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Storage;
+using Microsoft.Extensions.Logging;
 using ShaiMauiExcelToSql.Services;
 
 namespace ShaiMauiExcelToSql
@@ -9,7 +11,7 @@ namespace ShaiMauiExcelToSql
         {
             var builder = MauiApp.CreateBuilder();
             builder
-                .UseMauiApp<App>()
+                .UseMauiApp<App>().UseMauiCommunityToolkit()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -19,9 +21,9 @@ namespace ShaiMauiExcelToSql
             builder.Services.AddSingleton<DatabaseService>();
             builder.Services.AddSingleton<QueryHistoryService>();
             builder.Services.AddSingleton<ExcelExportSettingsService>();
-
+            builder.Services.AddSingleton<IFolderPicker>(FolderPicker.Default);
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
 #endif
 

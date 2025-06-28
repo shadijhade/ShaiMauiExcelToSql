@@ -1,5 +1,6 @@
 @using ShaiMauiExcelToSql.Models
 @using System.Data
+@using System.Linq
 
 <div class="modal fade @(IsVisible ? "show" : "")" style="display: @(IsVisible ? "block" : "none"); background-color: rgba(0,0,0,0.5);" tabindex="-1">
     <div class="modal-dialog">
@@ -13,7 +14,7 @@
                     <label for="columnSelect" class="form-label">Select Column</label>
                     <select class="form-select"
                             id="columnSelect"
-                            @bind="selectedColumnName">
+                            @onchange="OnColumnSelectionChanged">
                         @if (Columns == null || Columns.Count == 0)
                         {
                             <option value="" disabled>No columns available</option>
@@ -136,13 +137,32 @@
         if (Columns != null && Columns.Count > 0 && string.IsNullOrEmpty(selectedColumnName))
         {
             selectedColumnName = Columns[0].ColumnName;
+            previousColumnName = selectedColumnName;
             LoadColumnFormatting();
         }
     }
     
-    private void ColumnSelected()
+    private string previousColumnName = string.Empty;
+    
+    private async Task OnColumnSelectionChanged(ChangeEventArgs e)
     {
+        var newColumnName = e.Value?.ToString() ?? string.Empty;
+        
+        // Save the current formatting for the previously selected column before switching
+        if (!string.IsNullOrEmpty(previousColumnName) && ExportOptions != null)
+        {
+            SaveCurrentFormattingToOptions();
+        }
+        
+        // Update the selected column
+        selectedColumnName = newColumnName;
+        previousColumnName = selectedColumnName;
+        
+        // Load formatting for the new column
         LoadColumnFormatting();
+        
+        // Trigger UI update
+        StateHasChanged();
     }
     
     private void LoadColumnFormatting()
@@ -150,22 +170,57 @@
         if (string.IsNullOrEmpty(selectedColumnName) || ExportOptions == null)
             return;
             
-        currentFormatting = ExportOptions.GetColumnFormatting(selectedColumnName);
+        // Get existing formatting or create a new one
+        var existingFormatting = ExportOptions.GetColumnFormatting(selectedColumnName);
+        
+        // Create a copy to avoid reference issues
+        currentFormatting = new ColumnFormatting
+        {
+            ColumnName = existingFormatting.ColumnName,
+            CustomHeaderText = existingFormatting.CustomHeaderText,
+            CustomFormat = existingFormatting.CustomFormat,
+            Bold = existingFormatting.Bold,
+            Italic = existingFormatting.Italic,
+            BackgroundColor = existingFormatting.BackgroundColor,
+            FontColor = existingFormatting.FontColor,
+            Width = existingFormatting.Width,
+            Hidden = existingFormatting.Hidden
+        };
+    }
+    
+    private void SaveCurrentFormattingToOptions()
+    {
+        if (ExportOptions != null && !string.IsNullOrEmpty(currentFormatting.ColumnName))
+        {
+            currentFormatting.ColumnName = previousColumnName;
+            ExportOptions.SetColumnFormatting(currentFormatting);
+        }
     }
     
     private async Task SaveFormatting()
     {
         if (ExportOptions != null && !string.IsNullOrEmpty(selectedColumnName))
         {
+            // Save the current formatting
             currentFormatting.ColumnName = selectedColumnName;
             ExportOptions.SetColumnFormatting(currentFormatting);
             
             await OnFormattingUpdated.InvokeAsync();
         }
+        
+        // Close the dialog
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
     }
     
     private async Task OnCancel()
     {
+        // Save any pending changes before closing
+        if (!string.IsNullOrEmpty(selectedColumnName) && ExportOptions != null)
+        {
+            SaveCurrentFormattingToOptions();
+        }
+        
         IsVisible = false;
         await IsVisibleChanged.InvokeAsync(IsVisible);
     }
