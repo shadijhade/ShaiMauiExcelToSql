@@ -2,8 +2,10 @@
 @using ShaiMauiExcelToSql.Services
 @using System.Data
 @using System.Linq
+@using CommunityToolkit.Maui.Storage
 @inject ExcelExportSettingsService SettingsService
 @inject DatabaseService DatabaseService
+@inject IFolderPicker FolderPicker
 
 <div class="modal fade @(IsVisible ? "show" : "")" style="display: @(IsVisible ? "block" : "none"); background-color: rgba(0,0,0,0.5);" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -55,6 +57,19 @@
                                 <div class="mb-3">
                                     <label for="fileNamePrefix" class="form-label">File Name Prefix</label>
                                     <input type="text" class="form-control" id="fileNamePrefix" @bind="options.FileNamePrefix" />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="customSavePath" class="form-label">Custom Save Location</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="customSavePath" @bind="options.CustomSavePath" 
+                                               placeholder="Leave empty to use default location" />
+                                        <button class="btn btn-outline-secondary" type="button" @onclick="PickSaveLocation">
+                                            <i class="bi bi-folder"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Leave empty to save in the default location. Click the folder icon to choose a folder.
+                                    </small>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="includeHeaders" @bind="options.IncludeHeaderRow" />
@@ -220,5 +235,22 @@
         // Close the dialog
         IsVisible = false;
         await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+
+    private async Task PickSaveLocation()
+    {
+        try
+        {
+            var result = await FolderPicker.PickAsync(default);
+            if (result.IsSuccessful)
+            {
+                options.CustomSavePath = result.Folder.Path;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Folder picking failed: {ex.Message}");
+        }
     }
 }
