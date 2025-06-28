@@ -34,7 +34,7 @@
                                         <input type="text" class="form-control" id="customSavePath" @bind="options.CustomSavePath" 
                                                placeholder="Leave empty to use default location" />
                                         <button class="btn btn-outline-secondary" type="button" @onclick="PickSaveLocation">
-                                            <i class="bi bi-folder"></i>
+                                            <span class="material-symbols-outlined icon">folder</span>
                                         </button>
                                     </div>
                                     <small class="form-text text-muted">
@@ -166,7 +166,7 @@
                     <div class="card-body">
                         <p>Customize individual column formatting, headers, and appearance.</p>
                         <button class="btn btn-outline-primary" @onclick="ShowColumnFormatting">
-                            <i class="bi bi-table"></i> Configure Column Formatting
+                            <span class="material-symbols-outlined icon">table</span> Configure Column Formatting
                         </button>
                         
                         @if (options.ColumnFormattings.Count > 0)

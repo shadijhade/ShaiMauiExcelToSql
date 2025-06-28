@@ -16,7 +16,7 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i>
+                    <span class="material-symbols-outlined icon">info</span>
                     <strong>Multiple Result Sets Detected:</strong> Your query returned @ResultSets.Count result sets. 
                     Each result set will be exported to a separate worksheet in the Excel file.
                 </div>
@@ -64,7 +64,7 @@
                                         <input type="text" class="form-control" id="customSavePath" @bind="options.CustomSavePath" 
                                                placeholder="Leave empty to use default location" />
                                         <button class="btn btn-outline-secondary" type="button" @onclick="PickSaveLocation">
-                                            <i class="bi bi-folder"></i>
+                                            <span class="material-symbols-outlined icon">folder</span>
                                         </button>
                                     </div>
                                     <small class="form-text text-muted">
@@ -152,7 +152,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancel</button>
                 <button type="button" class="btn btn-primary" @onclick="HandleExport" disabled="@(!IsValidConfiguration())">
-                    <i class="bi bi-file-earmark-excel"></i> Export to Excel
+                    <span class="material-symbols-outlined icon">arrow_upload_progress</span> Export to Excel
                 </button>
             </div>
         </div>

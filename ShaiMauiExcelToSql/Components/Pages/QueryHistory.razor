@@ -9,7 +9,10 @@
 <div class="container">
     <div class="row mb-3">
         <div class="col">
-            <button class="btn btn-danger" @onclick="ClearHistory">Clear History</button>
+            <button class="btn btn-destructive" @onclick="ClearHistory">
+                <span class="material-symbols-outlined icon">delete</span>
+                Clear History
+            </button>
         </div>
     </div>
 
@@ -46,26 +49,35 @@
                             <td>
                                 @if (item.Success)
                                 {
-                                    <span class="badge bg-success">Success</span>
+                                    <span class="badge badge-success">
+                                        <span class="material-symbols-outlined icon icon-sm">check_circle</span>
+                                        Success
+                                    </span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-danger">Failed</span>
+                                    <span class="badge badge-destructive">
+                                        <span class="material-symbols-outlined icon icon-sm">cancel</span>
+                                        Failed
+                                    </span>
                                 }
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <button class="btn btn-sm btn-primary" @onclick="() => RunQuery(item)">Run</button>
+                                    <button class="btn btn-sm btn-primary" @onclick="() => RunQuery(item)">
+                                        <span class="material-symbols-outlined icon">play_arrow</span>
+                                        Run
+                                    </button>
                                     @if (!item.IsFavorite)
                                     {
-                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => AddToFavorites(item)">
-                                            <i class="bi bi-star"></i>
+                                        <button class="btn btn-sm btn-ghost" @onclick="() => AddToFavorites(item)" title="Add to Favorites">
+                                            <span class="material-symbols-outlined icon">star</span>
                                         </button>
                                     }
                                     else
                                     {
-                                        <button class="btn btn-sm btn-warning" @onclick="() => RemoveFromFavorites(item)">
-                                            <i class="bi bi-star-fill"></i>
+                                        <button class="btn btn-sm btn-ghost" @onclick="() => RemoveFromFavorites(item)" title="Remove from Favorites">
+                                            <span class="material-symbols-outlined icon" style="fill: currentColor; color: #fbbf24;">star</span>
                                         </button>
                                     }
                                 </div>
