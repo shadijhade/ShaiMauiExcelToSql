@@ -6,13 +6,13 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="maui-package-name-placeholder" Publisher="CN=User Name" Version="0.0.0.0" />
+  <Identity Name="com.companyname.shaimauiexceltosql" Publisher="CN=ShaiMauiExcelToSql" Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="3F5D20CF-FA53-4906-96AE-5AF7E52FC61E" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>$placeholder$</DisplayName>
-    <PublisherDisplayName>User Name</PublisherDisplayName>
+    <DisplayName>ShaiMauiExcelToSql</DisplayName>
+    <PublisherDisplayName>ShaiMauiExcelToSql</PublisherDisplayName>
     <Logo>$placeholder$.png</Logo>
   </Properties>
 

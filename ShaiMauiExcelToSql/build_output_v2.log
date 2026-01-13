@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  ShaiMauiExcelToSql -> C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\bin\Debug\net10.0-windows10.0.19041.0\win-x64\ShaiMauiExcelToSql.dll
+C:\Users\shado\.nuget\packages\microsoft.windowsappsdk\1.7.250909003\buildTransitive\Microsoft.Build.Msix.Packaging.targets(934,5): warning APPX0105: Cannot import the key file 'ShaiMauiExcelToSql_TemporaryKey.pfx'. The key file may be password protected. To correct this, try to import the certificate manually into the current user’s personal certificate store. [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+C:\Users\shado\.nuget\packages\microsoft.windowsappsdk\1.7.250909003\buildTransitive\Microsoft.Build.Msix.Packaging.targets(934,5): warning APPX0107: The certificate specified is not valid for signing. For more information about valid certificates, see http://go.microsoft.com/fwlink/?LinkID=241478. [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+
+Build succeeded.
+
+C:\Users\shado\.nuget\packages\microsoft.windowsappsdk\1.7.250909003\buildTransitive\Microsoft.Build.Msix.Packaging.targets(934,5): warning APPX0105: Cannot import the key file 'ShaiMauiExcelToSql_TemporaryKey.pfx'. The key file may be password protected. To correct this, try to import the certificate manually into the current user’s personal certificate store. [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+C:\Users\shado\.nuget\packages\microsoft.windowsappsdk\1.7.250909003\buildTransitive\Microsoft.Build.Msix.Packaging.targets(934,5): warning APPX0107: The certificate specified is not valid for signing. For more information about valid certificates, see http://go.microsoft.com/fwlink/?LinkID=241478. [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.80

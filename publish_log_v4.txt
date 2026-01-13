@@ -1,0 +1,8 @@
+  Determining projects to restore...
+  Restored C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj (in 257 ms).
+C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\Services\DatabaseService.cs(155,43): warning CS8600: Converting null literal or possible null value to non-nullable type. [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\Services\DatabaseService.cs(174,30): warning CS0168: The variable 'ex' is declared but never used [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\Services\DatabaseService.cs(155,43): warning CS8600: Converting null literal or possible null value to non-nullable type. [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\Services\DatabaseService.cs(174,30): warning CS0168: The variable 'ex' is declared but never used [C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\ShaiMauiExcelToSql.csproj::TargetFramework=net10.0-windows10.0.19041.0]
+  ShaiMauiExcelToSql -> C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\bin\Release\net10.0-windows10.0.19041.0\win-x64\ShaiMauiExcelToSql.dll
+  ShaiMauiExcelToSql -> C:\Repos\VisualStudioRepos\ShaiMauiExcelToSql\ShaiMauiExcelToSql\bin\Release\SingleFileDebug\

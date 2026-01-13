@@ -8,7 +8,7 @@ namespace ShaiMauiExcelToSql.Services
 {
     public class EnhancedDatabaseService
     {
-        public async Task<string> ExportToExcelWithCustomOptionsAsync(DataTable dataTable, ExcelExportOptions options = null, IProgress<int> progress = null)
+        public async Task<string> ExportToExcelWithCustomOptionsAsync(DataTable dataTable, ExcelExportOptions? options = null, IProgress<int>? progress = null)
         {
             try
             {
@@ -266,7 +266,7 @@ namespace ShaiMauiExcelToSql.Services
             }
         }
         
-        public async Task<string> ExportMultipleResultSetsToExcelAsync(List<ResultSet> resultSets, ExcelExportOptions options = null, IProgress<int> progress = null)
+        public async Task<string> ExportMultipleResultSetsToExcelAsync(List<ResultSet> resultSets, ExcelExportOptions? options = null, IProgress<int>? progress = null)
         {
             try
             {

@@ -488,10 +488,13 @@
             await Task.Delay(500);
 
             // Show success message or open the file
-            await Application.Current!.MainPage!.DisplayAlert(
-            "Export Successful",
-            $"File saved to: {filePath}",
-            "OK");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Successful",
+                $"File saved to: {filePath}",
+                "OK");
+            }
 
             // If option is set to open after export, try to open the file
             if (options.OpenAfterExport)
@@ -513,10 +516,13 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error exporting to Excel");
-            await Application.Current!.MainPage!.DisplayAlert(
-            "Export Failed",
-            $"Failed to export data: {ex.Message}",
-            "OK");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Failed",
+                $"Failed to export data: {ex.Message}",
+                "OK");
+            }
         }
         finally
         {
@@ -570,10 +576,13 @@
             await Task.Delay(500);
 
             // Show success message or open the file
-            await Application.Current!.MainPage!.DisplayAlert(
-            "Export Successful",
-            $"File with {queryResult.ResultSets.Count} worksheets saved to: {filePath}",
-            "OK");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Successful",
+                $"File with {queryResult.ResultSets.Count} worksheets saved to: {filePath}",
+                "OK");
+            }
 
             // If option is set to open after export, try to open the file
             if (options.OpenAfterExport)
@@ -595,10 +604,13 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error exporting multiple result sets to Excel");
-            await Application.Current!.MainPage!.DisplayAlert(
-            "Export Failed",
-            $"Failed to export multiple result sets: {ex.Message}",
-            "OK");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Failed",
+                $"Failed to export multiple result sets: {ex.Message}",
+                "OK");
+            }
         }
         finally
         {
@@ -606,7 +618,7 @@
         }
     }
 
-    private void AddToFavorites()
+    private async Task AddToFavorites()
     {
         if (queryResult != null && queryResult.Success)
         {
@@ -624,10 +636,13 @@
             HistoryService.AddToFavorites(favoriteItem);
 
             // Show confirmation
-            Application.Current!.MainPage!.DisplayAlert(
-            "Added to Favorites",
-            "This query has been added to your favorites.",
-            "OK");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Added to Favorites",
+                "This query has been added to your favorites.",
+                "OK");
+            }
         }
     }
 
@@ -647,13 +662,13 @@
 
     public async void Dispose()
     {
-        if (editor != null)
-        {
-            await module.InvokeVoidAsync("dispose", editor);
-            await editor.DisposeAsync();
-        }
         if (module != null)
         {
+            if (editor != null)
+            {
+                await module.InvokeVoidAsync("dispose", editor);
+                await editor.DisposeAsync();
+            }
             await module.DisposeAsync();
         }
     }

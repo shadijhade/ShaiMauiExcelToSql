@@ -6,7 +6,7 @@ namespace ShaiMauiExcelToSql.Services
     public class ExcelExportSettingsService
     {
         private const string SettingsKey = "excel_export_settings";
-        private ExcelExportOptions _currentSettings;
+        private ExcelExportOptions _currentSettings = new ExcelExportOptions(); // Initialize to default to avoid CS8618
         
         public ExcelExportSettingsService()
         {

@@ -193,7 +193,7 @@
     private bool IsValidConfiguration()
     {
         // Check if all sheet names are valid
-        var sheetNames = ResultSets.Select(rs => rs.SheetName?.Trim()).ToList();
+        var sheetNames = ResultSets.Select(rs => rs.SheetName?.Trim()).Where(n => n != null).Cast<string>().ToList();
         
         // Check for empty names
         if (sheetNames.Any(name => string.IsNullOrWhiteSpace(name)))
