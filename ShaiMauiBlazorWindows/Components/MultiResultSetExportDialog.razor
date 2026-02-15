@@ -1,0 +1,256 @@
+@using ShaiMauiExcelToSql.Models
+@using ShaiMauiExcelToSql.Services
+@using System.Data
+@using System.Linq
+@using CommunityToolkit.Maui.Storage
+@inject ExcelExportSettingsService SettingsService
+@inject DatabaseService DatabaseService
+@inject IFolderPicker FolderPicker
+
+<div class="modal fade @(IsVisible ? "show" : "")" style="display: @(IsVisible ? "block" : "none"); background-color: rgba(0,0,0,0.5);" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export Multiple Result Sets to Excel</h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <span class="material-symbols-outlined icon">info</span>
+                    <strong>Multiple Result Sets Detected:</strong> Your query returned @ResultSets.Count result sets. 
+                    Each result set will be exported to a separate worksheet in the Excel file.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Result Sets & Sheet Names</h6>
+                            </div>
+                            <div class="card-body">
+                                @for (int i = 0; i < ResultSets.Count; i++)
+                                {
+                                    var index = i; // Capture for lambda
+                                    var resultSet = ResultSets[index];
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <strong>Result Set @(index + 1)</strong> 
+                                            <small class="text-muted">(@resultSet.TotalRows rows, @resultSet.TotalColumns columns)</small>
+                                        </label>
+                                        <input type="text" class="form-control" 
+                                               @bind="resultSet.SheetName" 
+                                               placeholder="@($"Sheet{index + 1}")" 
+                                               maxlength="31" />
+                                        <small class="form-text text-muted">Sheet names must be 31 characters or less and cannot contain: \ / ? * [ ]</small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Basic Options</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="fileNamePrefix" class="form-label">File Name Prefix</label>
+                                    <input type="text" class="form-control" id="fileNamePrefix" @bind="options.FileNamePrefix" />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="customSavePath" class="form-label">Custom Save Location</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="customSavePath" @bind="options.CustomSavePath" 
+                                               placeholder="Leave empty to use default location" />
+                                        <button class="btn btn-outline-secondary" type="button" @onclick="PickSaveLocation">
+                                            <span class="material-symbols-outlined icon">folder</span>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Leave empty to save in the default location. Click the folder icon to choose a folder.
+                                    </small>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="includeHeaders" @bind="options.IncludeHeaderRow" />
+                                    <label class="form-check-label" for="includeHeaders">Include Header Row</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="autoFitColumns" @bind="options.AutoFitColumns" />
+                                    <label class="form-check-label" for="autoFitColumns">Auto-fit Columns</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="openAfterExport" @bind="options.OpenAfterExport" />
+                                    <label class="form-check-label" for="openAfterExport">Open After Export</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Formatting Options</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="applyTableStyle" @bind="options.ApplyTableStyle" />
+                                    <label class="form-check-label" for="applyTableStyle">Apply Table Style</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="boldHeaders" @bind="options.BoldHeaders" />
+                                    <label class="form-check-label" for="boldHeaders">Bold Headers</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="alternatingRows" @bind="options.AlternatingRowColors" />
+                                    <label class="form-check-label" for="alternatingRows">Alternating Row Colors</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="formatDates" @bind="options.FormatDatesAsDate" />
+                                    <label class="form-check-label" for="formatDates">Format Dates</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="formatNumbers" @bind="options.FormatNumbersAsNumbers" />
+                                    <label class="form-check-label" for="formatNumbers">Format Numbers</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Export Scope</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="exportScope" id="exportAll" 
+                                           checked="@options.ExportAllRows" @onchange="@(() => options.ExportAllRows = true)" />
+                                    <label class="form-check-label" for="exportAll">
+                                        Export All Rows (@TotalRows total across all result sets)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="exportScope" id="exportLimited" 
+                                           checked="@(!options.ExportAllRows)" @onchange="@(() => options.ExportAllRows = false)" />
+                                    <label class="form-check-label" for="exportLimited">
+                                        Export Limited Rows (per result set)
+                                    </label>
+                                </div>
+                                @if (!options.ExportAllRows)
+                                {
+                                    <div class="ms-4">
+                                        <label for="maxRows" class="form-label">Maximum Rows per Result Set</label>
+                                        <input type="number" class="form-control" id="maxRows" @bind="options.MaxRowsToExport" min="1" max="1000000" />
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" @onclick="HandleExport" disabled="@(!IsValidConfiguration())">
+                    <span class="material-symbols-outlined icon">arrow_upload_progress</span> Export to Excel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback<ExcelExportOptions> OnExport { get; set; }
+    [Parameter] public List<ResultSet> ResultSets { get; set; } = new List<ResultSet>();
+
+    private ExcelExportOptions options = new ExcelExportOptions();
+    
+    private int TotalRows => ResultSets.Sum(rs => rs.TotalRows);
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            // Load saved settings
+            options = SettingsService.GetSettings();
+            
+            // Set default file name prefix for multiple result sets
+            options.FileNamePrefix = "MultiResultSet_QueryResult";
+            
+            // Ensure all result sets have valid sheet names
+            for (int i = 0; i < ResultSets.Count; i++)
+            {
+                if (string.IsNullOrWhiteSpace(ResultSets[i].SheetName))
+                {
+                    ResultSets[i].SheetName = $"ResultSet{i + 1}";
+                }
+            }
+        }
+    }
+
+    private bool IsValidConfiguration()
+    {
+        // Check if all sheet names are valid
+        var sheetNames = ResultSets.Select(rs => rs.SheetName?.Trim()).Where(n => n != null).Cast<string>().ToList();
+        
+        // Check for empty names
+        if (sheetNames.Any(name => string.IsNullOrWhiteSpace(name)))
+            return false;
+            
+        // Check for duplicate names
+        if (sheetNames.Count != sheetNames.Distinct().Count())
+            return false;
+            
+        // Check for invalid characters
+        var invalidChars = new char[] { '\\', '/', '?', '*', '[', ']' };
+        if (sheetNames.Any(name => name.Any(c => invalidChars.Contains(c))))
+            return false;
+            
+        // Check length
+        if (sheetNames.Any(name => name.Length > 31))
+            return false;
+            
+        return true;
+    }
+
+    private async Task OnCancel()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+
+    private async Task HandleExport()
+    {
+        if (!IsValidConfiguration())
+            return;
+            
+        // Save settings for future use
+        SettingsService.SaveSettings(options);
+        
+        // Invoke the export callback
+        await OnExport.InvokeAsync(options);
+        
+        // Close the dialog
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+
+    private async Task PickSaveLocation()
+    {
+        try
+        {
+            var result = await FolderPicker.PickAsync(default);
+            if (result.IsSuccessful)
+            {
+                options.CustomSavePath = result.Folder.Path;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Folder picking failed: {ex.Message}");
+        }
+    }
+}

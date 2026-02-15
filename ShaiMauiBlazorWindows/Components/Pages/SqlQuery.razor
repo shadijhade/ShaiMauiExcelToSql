@@ -1,0 +1,689 @@
+@page "/sqlquery"
+@implements IDisposable
+@using Microsoft.Extensions.Logging
+@using ShaiMauiExcelToSql.Models
+@using ShaiMauiExcelToSql.Services
+@using System.Data
+@using System.Linq
+@using Microsoft.AspNetCore.WebUtilities
+@using ShaiMauiBlazorWindows.Components
+@inject DatabaseService DatabaseService
+@inject QueryHistoryService HistoryService
+@inject NavigationManager NavigationManager
+@inject ExcelExportSettingsService ExportSettingsService
+@inject ILogger<SqlQuery> Logger
+@inject IJSRuntime JSRuntime
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="font-semibold mb-1">SQL Query Tool</h2>
+        <p class="text-muted text-sm">Execute SQL queries and export results to Excel</p>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Database Connection & Query</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@connection" OnValidSubmit="ExecuteQuery">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-4">
+                            <label for="connectionString" class="form-label">Connection String</label>
+                            <InputText id="connectionString" class="form-control" @bind-Value="connection.ConnectionString" placeholder="Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;" />
+                            <div class="form-text">Enter your SQL Server connection string with appropriate credentials</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="sqlQuery" class="form-label">SQL Query</label>
+                            <textarea id="sqlQuery" class="form-control" rows="8" placeholder="SELECT * FROM YourTable WHERE condition = 'value'"></textarea>
+                            <div class="form-text">Write your SQL query here. Supports multiple result sets and complex queries</div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary" disabled="@isExecuting">
+                                @if (isExecuting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Executing...</span>
+                                }
+                                else
+                                {
+                                    <span class="material-symbols-outlined icon">play_arrow</span>
+                                    <span>Execute Query</span>
+                                }
+                            </button>
+
+                            @if (queryResult != null && queryResult.Success)
+                            {
+                                <button type="button" class="btn btn-outline-primary" @onclick="ShowExportDialog">
+                                    <span class="material-symbols-outlined icon">download</span>
+                                    Export to Excel
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (queryResult != null)
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h5 class="card-title mb-0">Query Results</h5>
+                            @if (queryResult.Success)
+                            {
+                                <div class="d-flex gap-2">
+                                    <span class="badge bg-success">Success</span>
+                                    <span class="badge bg-primary">@queryResult.ExecutionTime.TotalMilliseconds ms</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (queryResult.Success)
+                        {
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                        <div class="fs-4 font-semibold text-primary">@queryResult.TotalRows</div>
+                                        <div class="text-sm text-muted">Total Rows</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                        <div class="fs-4 font-semibold text-primary">@queryResult.TotalColumns</div>
+                                        <div class="text-sm text-muted">Total Columns</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                        <div class="fs-4 font-semibold text-primary">@queryResult.ExecutionTime.TotalMilliseconds</div>
+                                        <div class="text-sm text-muted">Execution Time (ms)</div>
+                                    </div>
+                                </div>
+                                @if (queryResult.HasMultipleResultSets)
+                                {
+                                    <div class="col-md-3">
+                                        <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                            <div class="fs-4 font-semibold text-primary">@queryResult.ResultSetCount</div>
+                                            <div class="text-sm text-muted">Result Sets</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (queryResult.HasMultipleResultSets)
+                            {
+                                <div class="alert alert-info">
+                                    <div class="d-flex align-items-center">
+                                        <span class="material-symbols-outlined icon me-2">info</span>
+                                        <strong>Multiple Result Sets Detected!</strong> Your query returned @queryResult.ResultSetCount result sets.
+                                    </div>
+                                </div>
+                            }
+
+                            @if (queryResult.HasMultipleResultSets)
+                            {
+                                <!-- Display summary for multiple result sets -->
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Result Sets Summary</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table mb-0 table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Result Set</th>
+                                                        <th>Rows</th>
+                                                        <th>Columns</th>
+                                                        <th>Preview</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @for (int i = 0; i < queryResult.ResultSets.Count; i++)
+                                                    {
+                                                        var index = i; // Capture the loop variable
+                                                        var resultSet = queryResult.ResultSets[index];
+                                                        <tr>
+                                                            <td><strong>@(index + 1)</strong></td>
+                                                            <td>@resultSet.TotalRows</td>
+                                                            <td>@resultSet.TotalColumns</td>
+                                                            <td>
+                                                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ToggleResultSetPreview(index))">
+                                                                    @(selectedResultSetIndex == index ? "Hide" : "Show") Preview
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (selectedResultSetIndex >= 0 && selectedResultSetIndex < queryResult.ResultSets.Count)
+                                {
+                                    var selectedResultSet = queryResult.ResultSets[selectedResultSetIndex];
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Result Set @(selectedResultSetIndex + 1) Preview (showing first 5 rows)</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table mb-0 table-striped table-bordered">
+                                                    <thead>
+                                                        <tr>
+                                                            @foreach (DataColumn column in selectedResultSet.Data.Columns)
+                                                            {
+                                                                <th>@column.ColumnName</th>
+                                                            }
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @{
+                                                            var rowsToShow = Math.Min(5, selectedResultSet.Data.Rows.Count);
+                                                            for (int i = 0; i < rowsToShow; i++)
+                                                            {
+                                                                <tr>
+                                                                    @foreach (var item in selectedResultSet.Data.Rows[i].ItemArray)
+                                                                    {
+                                                                        <td>@(item?.ToString() ?? "NULL")</td>
+                                                                    }
+                                                                </tr>
+                                                            }
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="mt-3 d-flex gap-2">
+                                    <button class="btn btn-success" @onclick="ShowMultiResultSetExportDialog" disabled="@isExporting">
+                                        @if (isExporting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            <span> Exporting...</span>
+                                        }
+                                        else
+                                        {
+                                            <span><span class="material-symbols-outlined icon" style="font-size: 1.25rem;line-height:.75rem">arrow_upload_progress</span> Export All Result Sets to Excel</span>
+                                        }
+                                    </button>
+                                    <button class="btn btn-warning" @onclick="AddToFavorites">
+                                        <span class="material-symbols-outlined icon" style="fill: currentColor;font-size: 1.25rem;line-height:.75rem">star</span> Add to Favorites
+                                    </button>
+                                </div>
+                            }
+                            else if (queryResult.Data != null && queryResult.Data.Rows.Count > 0)
+                            {
+                                <div class="table-responsive">
+                                    <table class="table mb-0 table-striped table-bordered">
+                                        <thead>
+                                            <tr>
+                                                @foreach (DataColumn column in queryResult.Data.Columns)
+                                                {
+                                                    <th>@column.ColumnName</th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                var rowsToShow = Math.Min(5, queryResult.Data.Rows.Count);
+                                                for (int i = 0; i < rowsToShow; i++)
+                                                {
+                                                    <tr>
+                                                        @foreach (var item in queryResult.Data.Rows[i].ItemArray)
+                                                        {
+                                                            <td>@(item?.ToString() ?? "NULL")</td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mt-3 d-flex gap-2">
+                                    <button class="btn btn-success" @onclick="ShowExportDialog" disabled="@isExporting">
+                                        @if (isExporting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            <span> Exporting...</span>
+                                        }
+                                        else
+                                        {
+                                            <span><span class="material-symbols-outlined icon" style="font-size: 1.25rem;line-height:.75rem">arrow_upload_progress</span> Export to Excel</span>
+                                        }
+                                    </button>
+                                    <button class="btn btn-warning" @onclick="AddToFavorites">
+                                        <span class="material-symbols-outlined icon" style="fill: currentColor;font-size: 1.25rem;line-height:.75rem">star</span> Add to Favorites
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">
+                                    Query executed successfully but returned no data.
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alert alert-danger">
+                                <p><strong>Error:</strong> @queryResult.ErrorMessage</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+@code {
+    private DatabaseConnection connection = new();
+    private QueryResult? queryResult;
+    private bool isExecuting = false;
+    private bool isExporting = false;
+    private bool showExportDialog = false;
+    private bool showMultiResultSetExportDialog = false;
+    private int exportProgress = 0;
+    private int selectedResultSetIndex = -1;
+    private IJSObjectReference? module;
+    private IJSObjectReference? editor;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Wait for DOM to be stable before initializing
+                await Task.Delay(500);
+                
+                module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/sql-editor.js");
+                editor = await module.InvokeAsync<IJSObjectReference>("init", DotNetObjectReference.Create(this), "sqlQuery");
+                
+                if (!string.IsNullOrEmpty(connection.SqlQuery))
+                {
+                    await editor.InvokeVoidAsync("setValue", connection.SqlQuery);
+                }
+
+                // Initialize icons after editor is ready - with longer delay
+                
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error in OnAfterRenderAsync: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void UpdateQuery(string query)
+    {
+        connection.SqlQuery = query;
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("connectionString", out var connectionStringParam))
+        {
+            connection.ConnectionString = connectionStringParam.ToString();
+        }
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("query", out var queryParam))
+        {
+            connection.SqlQuery = queryParam.ToString();
+            if (editor != null)
+            {
+                await editor.InvokeVoidAsync("setValue", connection.SqlQuery);
+            }
+        }
+    }
+
+    private async Task ExecuteQuery()
+    {
+        try
+        {
+            isExecuting = true;
+            selectedResultSetIndex = -1;
+            queryResult = await DatabaseService.ExecuteQueryAsync(connection);
+
+            // Add to history if query was executed
+            if (queryResult != null)
+            {
+                var historyItem = new QueryHistoryItem
+                {
+                    ConnectionString = connection.ConnectionString,
+                    SqlQuery = connection.SqlQuery,
+                    ExecutedAt = DateTime.Now,
+                    Success = queryResult.Success,
+                    RowCount = queryResult.Success ? queryResult.TotalRows : 0,
+                    ExecutionTime = queryResult.ExecutionTime
+                };
+
+                HistoryService.AddToHistory(historyItem);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error executing query");
+            queryResult = new QueryResult
+            {
+                Success = false,
+                ErrorMessage = $"An unexpected error occurred: {ex.Message}"
+            };
+        }
+        finally
+        {
+            isExecuting = false;
+            StateHasChanged();
+        } 
+    }
+
+    private void ShowExportDialog()
+    {
+        if (queryResult?.Data == null || !queryResult.Success)
+            return;
+
+        showExportDialog = true;
+    }
+
+    private void ShowMultiResultSetExportDialog()
+    {
+        if (queryResult?.ResultSets == null || !queryResult.Success || queryResult.ResultSets.Count == 0)
+            return;
+
+        showMultiResultSetExportDialog = true;
+    }
+
+    private void ToggleResultSetPreview(int index)
+    {
+        // Debug logging
+        System.Diagnostics.Debug.WriteLine($"ToggleResultSetPreview called with index: {index}, current selectedResultSetIndex: {selectedResultSetIndex}");
+
+        // Validate the index
+        if (queryResult?.ResultSets == null || index < 0 || index >= queryResult.ResultSets.Count)
+        {
+            System.Diagnostics.Debug.WriteLine($"Invalid index {index}, result sets count: {queryResult?.ResultSets?.Count ?? 0}");
+            return;
+        }
+
+        if (selectedResultSetIndex == index)
+        {
+            // Hide the preview if it's already showing
+            selectedResultSetIndex = -1;
+            System.Diagnostics.Debug.WriteLine($"Hiding preview, selectedResultSetIndex set to: {selectedResultSetIndex}");
+        }
+        else
+        {
+            // Show the preview for the selected result set
+            selectedResultSetIndex = index;
+            System.Diagnostics.Debug.WriteLine($"Showing preview for result set {index}, selectedResultSetIndex set to: {selectedResultSetIndex}");
+        }
+
+        // Force UI update
+        StateHasChanged();
+    }
+
+    private async Task HandleExportWithOptions(ExcelExportOptions options)
+    {
+        if (queryResult?.Data == null || !queryResult.Success)
+            return;
+
+        try
+        {
+            isExporting = true;
+            exportProgress = 0;
+
+            // Create a progress handler
+            var progressHandler = new Progress<int>(value =>
+            {
+                exportProgress = value;
+                StateHasChanged();
+            });
+
+            // Start with initial progress
+            (progressHandler as IProgress<int>).Report(5);
+
+            // Use a timer to simulate progress for small exports that finish quickly
+            var timer = new System.Timers.Timer(300);
+            timer.Elapsed += (sender, e) =>
+            {
+                if (isExporting && exportProgress < 90)
+                {
+                    exportProgress += 5;
+                    InvokeAsync(StateHasChanged);
+                }
+            };
+            timer.Start();
+
+            var filePath = await DatabaseService.ExportToExcelAsync(queryResult.Data, options);
+
+            // Stop the timer
+            timer.Stop();
+            timer.Dispose();
+
+            // Set to 100% when complete
+            exportProgress = 100;
+            await InvokeAsync(StateHasChanged);
+
+            // Small delay to show 100% completion
+            await Task.Delay(500);
+
+            // Show success message or open the file
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Successful",
+                $"File saved to: {filePath}",
+                "OK");
+            }
+
+            // If option is set to open after export, try to open the file
+            if (options.OpenAfterExport)
+            {
+                try
+                {
+                    await Launcher.OpenAsync(new OpenFileRequest
+                    {
+                        File = new ReadOnlyFile(filePath)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error opening exported file");
+                    // Silently fail if we can't open the file
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error exporting to Excel");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Failed",
+                $"Failed to export data: {ex.Message}",
+                "OK");
+            }
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+
+    private async Task HandleMultiResultSetExportWithOptions(ExcelExportOptions options)
+    {
+        if (queryResult?.ResultSets == null || !queryResult.Success || queryResult.ResultSets.Count == 0)
+            return;
+
+        try
+        {
+            isExporting = true;
+            exportProgress = 0;
+
+            // Create a progress handler
+            var progressHandler = new Progress<int>(value =>
+            {
+                exportProgress = value;
+                StateHasChanged();
+            });
+
+            // Start with initial progress
+            (progressHandler as IProgress<int>).Report(5);
+
+            // Use a timer to simulate progress for small exports that finish quickly
+            var timer = new System.Timers.Timer(300);
+            timer.Elapsed += (sender, e) =>
+            {
+                if (isExporting && exportProgress < 90)
+                {
+                    exportProgress += 5;
+                    InvokeAsync(StateHasChanged);
+                }
+            };
+            timer.Start();
+
+            var filePath = await DatabaseService.ExportMultipleResultSetsToExcelAsync(queryResult.ResultSets, options, progressHandler);
+
+            // Stop the timer
+            timer.Stop();
+            timer.Dispose();
+
+            // Set to 100% when complete
+            exportProgress = 100;
+            await InvokeAsync(StateHasChanged);
+
+            // Small delay to show 100% completion
+            await Task.Delay(500);
+
+            // Show success message or open the file
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Successful",
+                $"File with {queryResult.ResultSets.Count} worksheets saved to: {filePath}",
+                "OK");
+            }
+
+            // If option is set to open after export, try to open the file
+            if (options.OpenAfterExport)
+            {
+                try
+                {
+                    await Launcher.OpenAsync(new OpenFileRequest
+                    {
+                        File = new ReadOnlyFile(filePath)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error opening exported file");
+                    // Silently fail if we can't open the file
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error exporting multiple result sets to Excel");
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Export Failed",
+                $"Failed to export multiple result sets: {ex.Message}",
+                "OK");
+            }
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+
+    private async Task AddToFavorites()
+    {
+        if (queryResult != null && queryResult.Success)
+        {
+            var favoriteItem = new QueryHistoryItem
+            {
+                ConnectionString = connection.ConnectionString,
+                SqlQuery = connection.SqlQuery,
+                ExecutedAt = DateTime.Now,
+                Success = true,
+                RowCount = queryResult.TotalRows,
+                ExecutionTime = queryResult.ExecutionTime,
+                IsFavorite = true
+            };
+
+            HistoryService.AddToFavorites(favoriteItem);
+
+            // Show confirmation
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is Page page)
+            {
+                await page.DisplayAlertAsync(
+                "Added to Favorites",
+                "This query has been added to your favorites.",
+                "OK");
+            }
+        }
+    }
+
+    private string GetExportStatusMessage()
+    {
+        if (queryResult == null) return "Exporting...";
+
+        if (queryResult.HasMultipleResultSets)
+        {
+            return $"Exporting {queryResult.ResultSetCount} result sets ({queryResult.TotalRows:N0} total rows) to Excel...";
+        }
+        else
+        {
+            return $"Exporting {queryResult.TotalRows:N0} rows to Excel...";
+        }
+    }
+
+    public async void Dispose()
+    {
+        if (module != null)
+        {
+            if (editor != null)
+            {
+                await module.InvokeVoidAsync("dispose", editor);
+                await editor.DisposeAsync();
+            }
+            await module.DisposeAsync();
+        }
+    }
+}
+
+<ExcelExportDialog IsVisible="@showExportDialog"
+                   IsVisibleChanged="@((value) => showExportDialog = value)"
+                   OnExport="@HandleExportWithOptions"
+                   DataTable="@(queryResult?.Data ?? null)" />
+
+<MultiResultSetExportDialog IsVisible="@showMultiResultSetExportDialog"
+                            IsVisibleChanged="@((value) => showMultiResultSetExportDialog = value)"
+                            OnExport="@HandleMultiResultSetExportWithOptions"
+                            ResultSets="@(queryResult?.ResultSets ?? new List<ResultSet>())" />
+
+<ExportProgressBar IsVisible="@isExporting"
+                   Progress="@exportProgress"
+                   StatusMessage="@GetExportStatusMessage()" />
