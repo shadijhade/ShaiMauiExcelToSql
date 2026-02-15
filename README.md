@@ -4,6 +4,13 @@ A robust .NET MAUI Blazor Hybrid application designed to bridge the gap between 
 
 ## 🚀 Features
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="resources/screenshot-light.png" alt="Light Mode" width="45%" />
+  <img src="resources/screenshot-dark.png" alt="Dark Mode" width="45%" />
+</p>
+
 ## 📥 Download
 Latest Release: [Download for Windows (x64)](https://github.com/shadijhade/ShaiMauiExcelToSql/releases/latest)
 
